@@ -4,9 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rawdog_osgood"
-version = "0.0.1"
 authors = [
     { name = "Thomas Osgood", email = "20747585+thomas-osgood@users.noreply.github.com" },
 ]
 description = "python3 class implementing the Rawdog TCP Communication protocol."
 readme = "README.md"
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = { attr = "rawdog_osgood.__version__" }
