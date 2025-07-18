@@ -1,0 +1,19 @@
+[build-system]
+requires = [
+    "setuptools >= 80.9.0",
+    "setuptools-scm >= 8.3.1",
+    "wheel >= 0.45.1",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rawdog_osgood"
+authors = [
+    { name = "Thomas Osgood", email = "20747585+thomas-osgood@users.noreply.github.com" },
+]
+description = "python3 class implementing the Rawdog TCP Communication protocol."
+readme = "README.md"
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = { attr = "rawdog_osgood.__version__" }
