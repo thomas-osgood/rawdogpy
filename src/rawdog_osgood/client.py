@@ -14,7 +14,7 @@ MIN_PORT = 1
 
 SIZE_PACKET_FMT = ">HQ"
 
-class RawdogClient:
+class RawdogClientBase:
     """
     class that implements the Rawdog TCP communication protocol. 
 
@@ -22,15 +22,10 @@ class RawdogClient:
     from a Rawdog server, along with some basic metadata functions.
     """
 
-    def __init__(self, server_addr:str, server_port:int, **kwargs):
+    def __init__(self, server_addr:str, **kwargs):
 
         if not(isinstance(server_addr,str)):
             raise TypeError(f"server_addr must be a string. got {type(server_addr)}")
-
-        if not(isinstance(server_port,int)):
-            raise TypeError(f"server_port must be an int. got {type(server_port)}")
-        elif not(MIN_PORT <= server_port <= MAX_PORT):
-            raise ValueError(f"server_port must be within range {MIN_PORT} - {MAX_PORT}")
         
         s_timeout = kwargs.get("send_timeout", 10)
 
@@ -41,7 +36,6 @@ class RawdogClient:
 
         self.__agent_name = "client"
         self.__srvaddr = server_addr
-        self.__srvport = server_port
         self.__send_timeout = s_timeout
 
         return
@@ -160,6 +154,24 @@ class RawdogClient:
             err = ex
 
         return (r_md, r_dat, err)
+    
+class RawdogClientTcp(RawdogClientBase):
+    def __init__(self, server_addr, server_port, **kwargs):
+        super().__init__(server_addr, server_port, **kwargs)
+
+        if not(isinstance(server_port,int)):
+            raise TypeError(f"server_port must be an int. got {type(server_port)}")
+        elif not(MIN_PORT <= server_port <= MAX_PORT):
+            raise ValueError(f"server_port must be within range {MIN_PORT} - {MAX_PORT}")
+        
+        self.__srvport = server_port
+        
+        return
+    
+class RawdogClientUnix(RawdogClientBase):
+    def __init__(self, server_addr, **kwargs):
+        super().__init__(server_addr, **kwargs)
+        return
 
 def main():
     return
