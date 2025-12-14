@@ -14,23 +14,22 @@ MIN_PORT = 1
 
 SIZE_PACKET_FMT = ">HQ"
 
-class RawdogClient:
+class RawdogClientBase:
     """
     class that implements the Rawdog TCP communication protocol. 
 
     this has functions to both transmit to and receive information
     from a Rawdog server, along with some basic metadata functions.
+
+    this is the base class that all other RawdogClient classes
+    inherit from. the functions and variables in this class are present
+    in all sub-classes.
     """
 
-    def __init__(self, server_addr:str, server_port:int, **kwargs):
+    def __init__(self, server_addr:str, **kwargs):
 
         if not(isinstance(server_addr,str)):
             raise TypeError(f"server_addr must be a string. got {type(server_addr)}")
-
-        if not(isinstance(server_port,int)):
-            raise TypeError(f"server_port must be an int. got {type(server_port)}")
-        elif not(MIN_PORT <= server_port <= MAX_PORT):
-            raise ValueError(f"server_port must be within range {MIN_PORT} - {MAX_PORT}")
         
         s_timeout = kwargs.get("send_timeout", 10)
 
@@ -40,11 +39,44 @@ class RawdogClient:
             raise ValueError("send_timeout must be a positive int.")
 
         self.__agent_name = "client"
-        self.__srvaddr = server_addr
-        self.__srvport = server_port
-        self.__send_timeout = s_timeout
+        self.srvaddr = server_addr
+        self.send_timeout = s_timeout
 
         return
+    
+    def format_payload(self, headers:dict, message:bytes):
+        """
+        function designed to take a headers dict and message bytes,
+        package them into a payload that can be understood by a
+        rawdog server and return them.
+        """
+
+        try:
+            if not(isinstance(headers,dict)):
+                raise TypeError(f"headers must be a dict. got {type(headers)}")
+            
+            if isinstance(message,str):
+                message = message.encode(DEFAULT_ENCODING)
+            elif not(isinstance(message,bytes)):
+                raise TypeError(f"message must be bytes. got {type(message)}")
+
+            # json-encode the metadata.
+            metadata = json.dumps(headers).encode(DEFAULT_ENCODING)
+            # base64-encode the message.
+            message = base64.b64encode(message)
+
+            # get the sizes of both the metadata and
+            # data being transmitted.
+            meta_size = len(metadata)
+            data_size = len(message)
+
+            # format the payload that will be transmitted
+            # to the server.
+            payload = struct.pack(f"{SIZE_PACKET_FMT}{meta_size}s{data_size}s", meta_size, data_size, metadata, message)
+
+            return payload
+        except Exception as ex:
+            raise
     
     def generic_md(self, endpoint:int):
         """
@@ -111,34 +143,42 @@ class RawdogClient:
         function designed to transmit data to
         the server.
         """
-        data_size = int()
         err = None
-        meta_size = int()
+        r_dat = bytes()
+        r_md = dict()
+        return (r_md, r_dat, err)
+    
+class RawdogClientTcp(RawdogClientBase):
+    """
+    rawdog client class designed to communicate with a server
+    being hosted on a TCP socket.
+    """
+
+    def __init__(self, server_addr, server_port, **kwargs):
+        super().__init__(server_addr, **kwargs)
+
+        if not(isinstance(server_port,int)):
+            raise TypeError(f"server_port must be an int. got {type(server_port)}")
+        elif not(MIN_PORT <= server_port <= MAX_PORT):
+            raise ValueError(f"server_port must be within range {MIN_PORT} - {MAX_PORT}")
+        
+        self.srvport = server_port
+        
+        return
+    
+    def send(self, headers:dict, message:bytes):
+        """
+        function designed to transmit data to
+        the server.
+        """
+        err = None
         r_dat = bytes()
         r_md = dict()
 
         try:
-            if not(isinstance(headers,dict)):
-                raise TypeError(f"headers must be a dict. got {type(headers)}")
-            
-            if isinstance(message,str):
-                message = message.encode(DEFAULT_ENCODING)
-            elif not(isinstance(message,bytes)):
-                raise TypeError(f"message must be bytes. got {type(message)}")
-
-            # json-encode the metadata.
-            metadata = json.dumps(headers).encode(DEFAULT_ENCODING)
-            # base64-encode the message.
-            message = base64.b64encode(message)
-
-            # get the sizes of both the metadata and
-            # data being transmitted.
-            meta_size = len(metadata)
-            data_size = len(message)
-
-            # format the payload that will be transmitted
-            # to the server.
-            payload = struct.pack(f"{SIZE_PACKET_FMT}{meta_size}s{data_size}s", meta_size, data_size, metadata, message)
+            # call helper function to format the payload that is
+            # going to be transmitted.
+            payload = self.format_payload(headers=headers, message=message)
 
             # open a connection to the server and transmit
             # the payload.
@@ -146,9 +186,54 @@ class RawdogClient:
                 # set send timeout.
                 #
                 # reference: https://docs.python.org/3/library/socket.html#socket.socket.settimeout
-                conn.settimeout(self.__send_timeout)
+                conn.settimeout(self.send_timeout)
                 # connect to server.
-                conn.connect((self.__srvaddr, self.__srvport))
+                conn.connect((self.srvaddr, self.srvport))
+                # transmit data.
+                conn.sendall(payload)
+
+                r_md, r_dat, err = self.recv(conn=conn)
+                if err:
+                    raise err
+
+        except Exception as ex:
+            err = ex
+
+        return (r_md, r_dat, err)
+    
+class RawdogClientUnix(RawdogClientBase):
+    """
+    rawdog client class designed to communicate with a server
+    being hosted on a unix socket.
+    """
+
+    def __init__(self, server_addr, **kwargs):
+        super().__init__(server_addr, **kwargs)
+        return
+    
+    def send(self, headers:dict, message:bytes):
+        """
+        function designed to transmit data to
+        the server.
+        """
+        err = None
+        r_dat = bytes()
+        r_md = dict()
+
+        try:
+            # call helper function to format the payload that is
+            # going to be transmitted.
+            payload = self.format_payload(headers=headers, message=message)
+
+            # open a connection to the server and transmit
+            # the payload.
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
+                # set send timeout.
+                #
+                # reference: https://docs.python.org/3/library/socket.html#socket.socket.settimeout
+                conn.settimeout(self.send_timeout)
+                # connect to server.
+                conn.connect(self.srvaddr)
                 # transmit data.
                 conn.sendall(payload)
 
