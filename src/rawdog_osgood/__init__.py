@@ -1,4 +1,4 @@
-from .client import RawdogClient
+from .client import RawdogClientBase, RawdogClientTcp, RawdogClientUnix
 from importlib.metadata import version, PackageNotFoundError
 
 try:
