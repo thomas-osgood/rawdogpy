@@ -156,6 +156,11 @@ class RawdogClientBase:
         return (r_md, r_dat, err)
     
 class RawdogClientTcp(RawdogClientBase):
+    """
+    rawdog client class designed to communicate with a server
+    being hosted on a TCP socket.
+    """
+
     def __init__(self, server_addr, server_port, **kwargs):
         super().__init__(server_addr, server_port, **kwargs)
 
@@ -169,6 +174,11 @@ class RawdogClientTcp(RawdogClientBase):
         return
     
 class RawdogClientUnix(RawdogClientBase):
+    """
+    rawdog client class designed to communicate with a server
+    being hosted on a unix socket.
+    """
+    
     def __init__(self, server_addr, **kwargs):
         super().__init__(server_addr, **kwargs)
         return
