@@ -139,7 +139,34 @@ class RawdogClientBase:
         function designed to transmit data to
         the server.
         """
-        data_size = int()
+        err = None
+        r_dat = bytes()
+        r_md = dict()
+        return (r_md, r_dat, err)
+    
+class RawdogClientTcp(RawdogClientBase):
+    """
+    rawdog client class designed to communicate with a server
+    being hosted on a TCP socket.
+    """
+
+    def __init__(self, server_addr, server_port, **kwargs):
+        super().__init__(server_addr, server_port, **kwargs)
+
+        if not(isinstance(server_port,int)):
+            raise TypeError(f"server_port must be an int. got {type(server_port)}")
+        elif not(MIN_PORT <= server_port <= MAX_PORT):
+            raise ValueError(f"server_port must be within range {MIN_PORT} - {MAX_PORT}")
+        
+        self.__srvport = server_port
+        
+        return
+    
+    def send(self, headers:dict, message:bytes):
+        """
+        function designed to transmit data to
+        the server.
+        """
         err = None
         r_dat = bytes()
         r_md = dict()
@@ -170,24 +197,6 @@ class RawdogClientBase:
 
         return (r_md, r_dat, err)
     
-class RawdogClientTcp(RawdogClientBase):
-    """
-    rawdog client class designed to communicate with a server
-    being hosted on a TCP socket.
-    """
-
-    def __init__(self, server_addr, server_port, **kwargs):
-        super().__init__(server_addr, server_port, **kwargs)
-
-        if not(isinstance(server_port,int)):
-            raise TypeError(f"server_port must be an int. got {type(server_port)}")
-        elif not(MIN_PORT <= server_port <= MAX_PORT):
-            raise ValueError(f"server_port must be within range {MIN_PORT} - {MAX_PORT}")
-        
-        self.__srvport = server_port
-        
-        return
-    
 class RawdogClientUnix(RawdogClientBase):
     """
     rawdog client class designed to communicate with a server
@@ -197,6 +206,41 @@ class RawdogClientUnix(RawdogClientBase):
     def __init__(self, server_addr, **kwargs):
         super().__init__(server_addr, **kwargs)
         return
+    
+    def send(self, headers:dict, message:bytes):
+        """
+        function designed to transmit data to
+        the server.
+        """
+        err = None
+        r_dat = bytes()
+        r_md = dict()
+
+        try:
+            # call helper function to format the payload that is
+            # going to be transmitted.
+            payload = self.__format_payload(headers=headers, message=message)
+
+            # open a connection to the server and transmit
+            # the payload.
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
+                # set send timeout.
+                #
+                # reference: https://docs.python.org/3/library/socket.html#socket.socket.settimeout
+                conn.settimeout(self.__send_timeout)
+                # connect to server.
+                conn.connect(self.__srvaddr)
+                # transmit data.
+                conn.sendall(payload)
+
+                r_md, r_dat, err = self.recv(conn=conn)
+                if err:
+                    raise err
+
+        except Exception as ex:
+            err = ex
+
+        return (r_md, r_dat, err)
 
 def main():
     return
