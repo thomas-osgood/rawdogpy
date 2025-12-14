@@ -151,7 +151,7 @@ class RawdogClientTcp(RawdogClientBase):
     """
 
     def __init__(self, server_addr, server_port, **kwargs):
-        super().__init__(server_addr, server_port, **kwargs)
+        super().__init__(server_addr, **kwargs)
 
         if not(isinstance(server_port,int)):
             raise TypeError(f"server_port must be an int. got {type(server_port)}")
