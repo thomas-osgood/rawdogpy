@@ -40,6 +40,40 @@ class RawdogClientBase:
 
         return
     
+    def __format_payload(self, headers:dict, message:bytes):
+        """
+        function designed to take a headers dict and message bytes,
+        package them into a payload that can be understood by a
+        rawdog server and return them.
+        """
+
+        try:
+            if not(isinstance(headers,dict)):
+                raise TypeError(f"headers must be a dict. got {type(headers)}")
+            
+            if isinstance(message,str):
+                message = message.encode(DEFAULT_ENCODING)
+            elif not(isinstance(message,bytes)):
+                raise TypeError(f"message must be bytes. got {type(message)}")
+
+            # json-encode the metadata.
+            metadata = json.dumps(headers).encode(DEFAULT_ENCODING)
+            # base64-encode the message.
+            message = base64.b64encode(message)
+
+            # get the sizes of both the metadata and
+            # data being transmitted.
+            meta_size = len(metadata)
+            data_size = len(message)
+
+            # format the payload that will be transmitted
+            # to the server.
+            payload = struct.pack(f"{SIZE_PACKET_FMT}{meta_size}s{data_size}s", meta_size, data_size, metadata, message)
+
+            return payload
+        except Exception as ex:
+            raise
+    
     def generic_md(self, endpoint:int):
         """
         function designed to build and return generic metadata
@@ -107,32 +141,13 @@ class RawdogClientBase:
         """
         data_size = int()
         err = None
-        meta_size = int()
         r_dat = bytes()
         r_md = dict()
 
         try:
-            if not(isinstance(headers,dict)):
-                raise TypeError(f"headers must be a dict. got {type(headers)}")
-            
-            if isinstance(message,str):
-                message = message.encode(DEFAULT_ENCODING)
-            elif not(isinstance(message,bytes)):
-                raise TypeError(f"message must be bytes. got {type(message)}")
-
-            # json-encode the metadata.
-            metadata = json.dumps(headers).encode(DEFAULT_ENCODING)
-            # base64-encode the message.
-            message = base64.b64encode(message)
-
-            # get the sizes of both the metadata and
-            # data being transmitted.
-            meta_size = len(metadata)
-            data_size = len(message)
-
-            # format the payload that will be transmitted
-            # to the server.
-            payload = struct.pack(f"{SIZE_PACKET_FMT}{meta_size}s{data_size}s", meta_size, data_size, metadata, message)
+            # call helper function to format the payload that is
+            # going to be transmitted.
+            payload = self.__format_payload(headers=headers, message=message)
 
             # open a connection to the server and transmit
             # the payload.
@@ -178,7 +193,7 @@ class RawdogClientUnix(RawdogClientBase):
     rawdog client class designed to communicate with a server
     being hosted on a unix socket.
     """
-    
+
     def __init__(self, server_addr, **kwargs):
         super().__init__(server_addr, **kwargs)
         return
