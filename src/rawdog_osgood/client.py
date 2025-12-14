@@ -35,12 +35,12 @@ class RawdogClientBase:
             raise ValueError("send_timeout must be a positive int.")
 
         self.__agent_name = "client"
-        self.__srvaddr = server_addr
-        self.__send_timeout = s_timeout
+        self.srvaddr = server_addr
+        self.send_timeout = s_timeout
 
         return
     
-    def __format_payload(self, headers:dict, message:bytes):
+    def format_payload(self, headers:dict, message:bytes):
         """
         function designed to take a headers dict and message bytes,
         package them into a payload that can be understood by a
@@ -158,7 +158,7 @@ class RawdogClientTcp(RawdogClientBase):
         elif not(MIN_PORT <= server_port <= MAX_PORT):
             raise ValueError(f"server_port must be within range {MIN_PORT} - {MAX_PORT}")
         
-        self.__srvport = server_port
+        self.srvport = server_port
         
         return
     
@@ -174,7 +174,7 @@ class RawdogClientTcp(RawdogClientBase):
         try:
             # call helper function to format the payload that is
             # going to be transmitted.
-            payload = self.__format_payload(headers=headers, message=message)
+            payload = self.format_payload(headers=headers, message=message)
 
             # open a connection to the server and transmit
             # the payload.
@@ -182,9 +182,9 @@ class RawdogClientTcp(RawdogClientBase):
                 # set send timeout.
                 #
                 # reference: https://docs.python.org/3/library/socket.html#socket.socket.settimeout
-                conn.settimeout(self.__send_timeout)
+                conn.settimeout(self.send_timeout)
                 # connect to server.
-                conn.connect((self.__srvaddr, self.__srvport))
+                conn.connect((self.srvaddr, self.srvport))
                 # transmit data.
                 conn.sendall(payload)
 
@@ -219,7 +219,7 @@ class RawdogClientUnix(RawdogClientBase):
         try:
             # call helper function to format the payload that is
             # going to be transmitted.
-            payload = self.__format_payload(headers=headers, message=message)
+            payload = self.format_payload(headers=headers, message=message)
 
             # open a connection to the server and transmit
             # the payload.
@@ -227,9 +227,9 @@ class RawdogClientUnix(RawdogClientBase):
                 # set send timeout.
                 #
                 # reference: https://docs.python.org/3/library/socket.html#socket.socket.settimeout
-                conn.settimeout(self.__send_timeout)
+                conn.settimeout(self.send_timeout)
                 # connect to server.
-                conn.connect(self.__srvaddr)
+                conn.connect(self.srvaddr)
                 # transmit data.
                 conn.sendall(payload)
 
