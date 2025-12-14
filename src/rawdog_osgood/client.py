@@ -20,6 +20,10 @@ class RawdogClientBase:
 
     this has functions to both transmit to and receive information
     from a Rawdog server, along with some basic metadata functions.
+
+    this is the base class that all other RawdogClient classes
+    inherit from. the functions and variables in this class are present
+    in all sub-classes.
     """
 
     def __init__(self, server_addr:str, **kwargs):
